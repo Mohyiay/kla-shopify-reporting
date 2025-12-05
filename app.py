@@ -239,6 +239,9 @@ if orders_file and customers_file and selected_months:
 
             # Convert dates
             df_orders['date'] = pd.to_datetime(df_orders[col_created])
+            # Ensure date is timezone-naive for comparison
+            if df_orders['date'].dt.tz is not None:
+                df_orders['date'] = df_orders['date'].dt.tz_localize(None)
             
             # Filter Valid Orders (Start Date)
             start_date = pd.Timestamp(2025, 4, 15)
