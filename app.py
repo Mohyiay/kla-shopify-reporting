@@ -163,13 +163,22 @@ def fmt_eur(val):
 
 def extract_am_from_tags(tags_str):
     if not isinstance(tags_str, str): return None
-    tags = [t.strip().lower() for t in tags_str.split(',')]
+    tags_lower = tags_str.lower()
+    
+    # 1. Try specific 'am:' tag
+    tags = [t.strip() for t in tags_lower.split(',')]
     for tag in tags:
         if tag.startswith('am:'):
             email_part = tag.split(':', 1)[1]
             for key, name in AM_MAPPING.items():
                 if key in email_part:
                     return name
+    
+    # 2. Try finding name directly in tags (fallback)
+    for key, name in AM_MAPPING.items():
+        if key in tags_lower:
+            return name
+            
     return None
 
 def is_test_account(email):
@@ -286,6 +295,15 @@ if orders_file and customers_file and selected_months:
             df_orders[col_total] = df_orders[col_total].apply(clean_currency).fillna(0)
             if col_qty:
                 df_orders[col_qty] = pd.to_numeric(df_orders[col_qty], errors='coerce').fillna(0)
+
+            # Clean Product Names (if they look like slugs)
+            if col_prod_title:
+                def clean_product_name(name):
+                    if isinstance(name, str) and '-' in name and ' ' not in name:
+                        # Replace hyphens with spaces and title case
+                        return name.replace('-', ' ').title()
+                    return name
+                df_orders[col_prod_title] = df_orders[col_prod_title].apply(clean_product_name)
 
             # Convert dates
             # Force UTC to ensure we get a valid datetime series (not object), then strip timezone
