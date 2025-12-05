@@ -222,20 +222,26 @@ if orders_file and customers_file and selected_months:
             # For robustness, let's try to find columns by keyword if exact match fails.
             
             def get_col(df, keywords):
+                # First try exact match (case-insensitive)
+                for col in df.columns:
+                    if col.lower() in [k.lower() for k in keywords]:
+                        return col
+                # Then try partial match
                 for col in df.columns:
                     if any(k.lower() in col.lower() for k in keywords):
                         return col
                 return None
 
-            col_id = get_col(df_orders, ['Name', 'Order ID']) # Usually 'Name' is #1001
-            col_email = get_col(df_orders, ['Email'])
-            col_created = get_col(df_orders, ['Created at'])
-            col_total = get_col(df_orders, ['Total'])
-            col_cust_tags = get_col(df_orders, ['Customer Tags', 'Tags']) # Important for AM
-            col_line_type = get_col(df_orders, ['Lineitem type']) # To distinguish products
-            col_prod_title = get_col(df_orders, ['Lineitem name', 'Product'])
-            col_qty = get_col(df_orders, ['Lineitem quantity'])
-            col_cancelled = get_col(df_orders, ['Cancelled at'])
+            # Expanded keywords for multi-language support
+            col_id = get_col(df_orders, ['Name', 'Order ID', 'Naam', 'Bestelnummer']) 
+            col_email = get_col(df_orders, ['Email', 'E-mail'])
+            col_created = get_col(df_orders, ['Created at', 'Aangemaakt op', 'Date', 'Datum'])
+            col_total = get_col(df_orders, ['Total', 'Totaal', 'Price', 'Prijs'])
+            col_cust_tags = get_col(df_orders, ['Customer Tags', 'Tags', 'Klanttags']) 
+            col_line_type = get_col(df_orders, ['Lineitem type', 'Type regelitem']) 
+            col_prod_title = get_col(df_orders, ['Lineitem name', 'Product', 'Titel'])
+            col_qty = get_col(df_orders, ['Lineitem quantity', 'Aantal', 'Quantity'])
+            col_cancelled = get_col(df_orders, ['Cancelled at', 'Geannuleerd op'])
 
             # Check for missing columns
             missing_cols = []
@@ -246,6 +252,22 @@ if orders_file and customers_file and selected_months:
             if missing_cols:
                 st.error(f"Missing required columns in Orders file: {', '.join(missing_cols)}")
                 st.stop()
+
+            # Clean Numeric Columns (Total & Quantity)
+            def clean_currency(x):
+                if isinstance(x, str):
+                    # Remove currency symbols and handle comma/dot
+                    clean = x.replace('€', '').replace('$', '').strip()
+                    if ',' in clean and '.' in clean: # e.g. 1.234,56
+                        clean = clean.replace('.', '').replace(',', '.')
+                    elif ',' in clean: # e.g. 1234,56
+                        clean = clean.replace(',', '.')
+                    return pd.to_numeric(clean, errors='coerce')
+                return pd.to_numeric(x, errors='coerce')
+
+            df_orders[col_total] = df_orders[col_total].apply(clean_currency).fillna(0)
+            if col_qty:
+                df_orders[col_qty] = pd.to_numeric(df_orders[col_qty], errors='coerce').fillna(0)
 
             # Convert dates
             # Force UTC to ensure we get a valid datetime series (not object), then strip timezone
