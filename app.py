@@ -282,7 +282,9 @@ if orders_file and customers_file and selected_months:
             col_c_orders = get_col(df_customers, ['Total Orders'])
             col_c_tags = get_col(df_customers, ['Tags'])
             
-            df_customers['created_at'] = pd.to_datetime(df_customers[col_c_created])
+            # Force UTC conversion for customers too
+            df_customers['created_at'] = pd.to_datetime(df_customers[col_c_created], errors='coerce', utc=True)
+            df_customers['created_at'] = df_customers['created_at'].dt.tz_localize(None)
             
             # Deduplicate customers (keep latest or aggregate) - Shopify export usually has one row per customer
             # But if multiple addresses, might have duplicates. Group by Email.
