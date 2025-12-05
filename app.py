@@ -231,11 +231,21 @@ if orders_file and customers_file and selected_months:
             col_email = get_col(df_orders, ['Email'])
             col_created = get_col(df_orders, ['Created at'])
             col_total = get_col(df_orders, ['Total'])
-            col_cust_tags = get_col(df_orders, ['Customer Tags']) # Important for AM
+            col_cust_tags = get_col(df_orders, ['Customer Tags', 'Tags']) # Important for AM
             col_line_type = get_col(df_orders, ['Lineitem type']) # To distinguish products
             col_prod_title = get_col(df_orders, ['Lineitem name', 'Product'])
             col_qty = get_col(df_orders, ['Lineitem quantity'])
             col_cancelled = get_col(df_orders, ['Cancelled at'])
+
+            # Check for missing columns
+            missing_cols = []
+            if not col_id: missing_cols.append("Name/Order ID")
+            if not col_created: missing_cols.append("Created at")
+            if not col_total: missing_cols.append("Total")
+            
+            if missing_cols:
+                st.error(f"Missing required columns in Orders file: {', '.join(missing_cols)}")
+                st.stop()
 
             # Convert dates
             # Force UTC to ensure we get a valid datetime series (not object), then strip timezone
@@ -244,13 +254,21 @@ if orders_file and customers_file and selected_months:
             
             # Filter Valid Orders (Start Date)
             start_date = pd.Timestamp(2025, 4, 15)
-            valid_orders = df_orders[
-                (df_orders['date'] >= start_date) & 
-                (df_orders[col_cancelled].isna())
-            ].copy()
+            
+            # Handle Cancelled column safely
+            if col_cancelled:
+                valid_orders = df_orders[
+                    (df_orders['date'] >= start_date) & 
+                    (df_orders[col_cancelled].isna())
+                ].copy()
+            else:
+                valid_orders = df_orders[df_orders['date'] >= start_date].copy()
             
             # Extract AM
-            valid_orders['am'] = valid_orders[col_cust_tags].apply(extract_am_from_tags)
+            if col_cust_tags:
+                valid_orders['am'] = valid_orders[col_cust_tags].apply(extract_am_from_tags)
+            else:
+                valid_orders['am'] = None
             
             # Filter Period Orders
             period_orders = valid_orders[
