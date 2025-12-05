@@ -342,11 +342,18 @@ if orders_file and customers_file and selected_months:
             # Filter for line items only
             # Assuming 'Lineitem type' exists or we infer it.
             # If not, usually rows with Product Name are line items.
-            prod_stats = period_orders.groupby(col_prod_title)[col_qty].sum().sort_values(ascending=False).head(5)
+            if col_prod_title and col_qty:
+                prod_stats = period_orders.groupby(col_prod_title)[col_qty].sum().sort_values(ascending=False).head(5)
+            else:
+                prod_stats = pd.Series()
             
             # Top Customers
-            cust_rev = unique_orders_period.groupby(col_email)[col_total].sum().sort_values(ascending=False).head(5)
-            cust_freq = unique_orders_period.groupby(col_email).size().sort_values(ascending=False).head(5)
+            if col_email:
+                cust_rev = unique_orders_period.groupby(col_email)[col_total].sum().sort_values(ascending=False).head(5)
+                cust_freq = unique_orders_period.groupby(col_email).size().sort_values(ascending=False).head(5)
+            else:
+                cust_rev = pd.Series()
+                cust_freq = pd.Series()
 
         # --- Input Fields for Text ---
         st.subheader("5. Report Content")
