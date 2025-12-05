@@ -221,7 +221,7 @@ if orders_file and customers_file and selected_months:
             # We need to map the column names or find them dynamically if they change.
             # For robustness, let's try to find columns by keyword if exact match fails.
             
-            def get_col(df, keywords):
+            def get_col(df, keywords, exclude=None):
                 # First try exact match (case-insensitive)
                 for col in df.columns:
                     if col.lower() in [k.lower() for k in keywords]:
@@ -229,19 +229,37 @@ if orders_file and customers_file and selected_months:
                 # Then try partial match
                 for col in df.columns:
                     if any(k.lower() in col.lower() for k in keywords):
+                        # Check exclusions
+                        if exclude and any(e.lower() in col.lower() for e in exclude):
+                            continue
                         return col
                 return None
 
-            # Expanded keywords for multi-language support
+            # Expanded keywords for multi-language support with exclusions
             col_id = get_col(df_orders, ['Name', 'Order ID', 'Naam', 'Bestelnummer']) 
             col_email = get_col(df_orders, ['Email', 'E-mail'])
             col_created = get_col(df_orders, ['Created at', 'Aangemaakt op', 'Date', 'Datum'])
-            col_total = get_col(df_orders, ['Total', 'Totaal', 'Price', 'Prijs'])
+            col_total = get_col(df_orders, ['Total', 'Totaal', 'Price', 'Prijs'], exclude=['tax', 'outstanding', 'shipping', 'weight', 'btw', 'verzending'])
             col_cust_tags = get_col(df_orders, ['Customer Tags', 'Tags', 'Klanttags']) 
             col_line_type = get_col(df_orders, ['Lineitem type', 'Type regelitem']) 
-            col_prod_title = get_col(df_orders, ['Lineitem name', 'Product', 'Titel'])
+            col_prod_title = get_col(df_orders, ['Lineitem name', 'Product', 'Titel'], exclude=['id', 'code', 'sku'])
             col_qty = get_col(df_orders, ['Lineitem quantity', 'Aantal', 'Quantity'])
             col_cancelled = get_col(df_orders, ['Cancelled at', 'Geannuleerd op'])
+
+            # Debug info
+            with st.expander("Debug: Detected Columns & Data Preview"):
+                st.write("Detected Columns:")
+                st.json({
+                    "ID": col_id,
+                    "Email": col_email,
+                    "Created": col_created,
+                    "Total": col_total,
+                    "Tags": col_cust_tags,
+                    "Product": col_prod_title,
+                    "Qty": col_qty
+                })
+                st.write("Orders Preview:")
+                st.dataframe(df_orders.head())
 
             # Check for missing columns
             missing_cols = []
