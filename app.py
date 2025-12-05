@@ -238,10 +238,12 @@ if orders_file and customers_file and selected_months:
             col_cancelled = get_col(df_orders, ['Cancelled at'])
 
             # Convert dates
-            df_orders['date'] = pd.to_datetime(df_orders[col_created])
+            df_orders['date'] = pd.to_datetime(df_orders[col_created], errors='coerce')
+            
             # Ensure date is timezone-naive for comparison
-            if df_orders['date'].dt.tz is not None:
-                df_orders['date'] = df_orders['date'].dt.tz_localize(None)
+            if pd.api.types.is_datetime64_any_dtype(df_orders['date']):
+                if df_orders['date'].dt.tz is not None:
+                    df_orders['date'] = df_orders['date'].dt.tz_localize(None)
             
             # Filter Valid Orders (Start Date)
             start_date = pd.Timestamp(2025, 4, 15)
