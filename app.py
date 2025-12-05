@@ -365,22 +365,52 @@ if orders_file and customers_file and selected_months:
         # AI Generation Handler
         if generate_ai_btn and make_webhook_url:
             with st.spinner("Asking AI..."):
+                # Prepare rich payload
                 payload = {
                     "period": period_str,
-                    "revenue": period_revenue,
-                    "orders": period_orders_count,
-                    "new_customers": new_customers_count,
-                    "top_product": prod_stats.index[0] if not prod_stats.empty else "N/A",
-                    "language": language
+                    "language": language,
+                    "kpi_period": {
+                        "revenue": float(period_revenue),
+                        "orders": int(period_orders_count),
+                        "aov": float(period_avg)
+                    },
+                    "kpi_total": {
+                        "revenue": float(launch_revenue),
+                        "orders": int(launch_orders),
+                        "aov": float(launch_avg)
+                    },
+                    "customers": {
+                        "new": int(new_customers_count),
+                        "active": int(active_customers_count),
+                        "inactive": int(inactive_customers_count),
+                        "with_am": int(customers_with_am_count),
+                        "without_am": int(customers_without_am_count)
+                    },
+                    "monthly_evolution": [
+                        {"month": f"{MONTH_NAMES[language][m]} {y}", "orders": int(row['count']), "revenue": float(row['sum'])}
+                        for (y, m), row in monthly_stats.iterrows()
+                        if y == selected_year and m >= min(selected_months) - 2
+                    ],
+                    "am_performance": [
+                        {"name": str(row['am']), "orders": int(row['count']), "revenue": float(row['sum'])}
+                        for _, row in am_stats.iterrows()
+                    ],
+                    "top_products": [
+                        {"name": str(prod), "qty": int(qty)}
+                        for prod, qty in prod_stats.items()
+                    ]
                 }
+                
                 try:
+                    # Use json=payload to automatically set Content-Type: application/json
+                    # Use data=json.dumps(payload, default=str) if you need custom serialization
                     response = requests.post(make_webhook_url, json=payload)
                     if response.status_code == 200:
                         ai_text = response.text # Assuming Make returns raw text
                         default_challenges = ai_text
                         st.success("AI Insights Generated!")
                     else:
-                        st.error("Failed to contact Make.com")
+                        st.error(f"Failed to contact Make.com: {response.status_code}")
                 except Exception as e:
                     st.error(f"Error: {e}")
 
